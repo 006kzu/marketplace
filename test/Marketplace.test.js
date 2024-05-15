@@ -36,7 +36,7 @@ contract('Marketplace', ([deployer, seller, buyer]) => {
             productCount = await marketplace.productCount();
         })
 
-        it('creates products', async () => {
+        it('Creates products', async () => {
             //SUCCESS
             assert.equal(productCount, 1);
             const event = result.logs[0].args;
@@ -59,6 +59,47 @@ contract('Marketplace', ([deployer, seller, buyer]) => {
             assert.equal(product.price, '1000000000000000000' , 'price is correct');
             assert.equal(product.owner, seller, 'is correct');
             assert.equal(product.purchased, false , 'purchased is correct');
+        })
+
+        it('Sells products', async () => {
+            //Track the seller balance before purchase
+            let oldSellerBalance
+            oldSellerBalance = await web3.eth.getBalance(seller)
+            oldSellerBalance = new web3.utils.BN(oldSellerBalance)
+
+            //SUCCESS Buyer Makes Purchase
+            result = await marketplace.purchaseProduct(productCount, {from: buyer, value: web3.utils.toWei('1', 'Ether')})
+
+            //Check logs
+            const event = result.logs[0].args;
+            assert.equal(event.id.toNumber(), productCount.toNumber(), 'id is correct');
+            assert.equal(event.name, 'Iphone X', 'name is correct');
+            assert.equal(event.price, '1000000000000000000' , 'price is correct');
+            assert.equal(event.owner, buyer, 'is correct');
+            assert.equal(event.purchased, true , 'purchased is correct');
+
+            //Check that seller recieved funds
+            let newSellerBalance
+            newSellerBalance = await web3.eth.getBalance(seller)
+            newSellerBalance = new web3.utils.BN(newSellerBalance)
+
+            let price
+            price = web3.utils.toWei('1', 'Ether')
+            price = new web3.utils.BN(price)
+
+            const expectedBalance = oldSellerBalance.add(price)
+
+            assert.equal(newSellerBalance.toString(), expectedBalance.toString())
+
+            //FAILURE: Tries to buy product that doesn't exist, i.e. product must have valid id
+            await marketplace.purchaseProduct(99, {from: buyer, value: web3.utils.toWei('1', 'Ether')}).should.be.rejected;
+            //FAILURE: not enough ETH
+            await marketplace.purchaseProduct(productCount, {from: buyer, value: web3.utils.toWei('0.5', 'Ether')}).should.be.rejected;
+            //FAILURE Deployer tries to buy product, Seller can't buy product
+            await marketplace.purchaseProduct(productCount, {from: deployer, value: web3.utils.toWei('1', 'Ether')}).should.be.rejected;
+            //FAILURE Buyer can be seller
+            await marketplace.purchaseProduct(productCount, {from: buyer, value: web3.utils.toWei('1', 'Ether')}).should.be.rejected;
+
         })
     })
 })
