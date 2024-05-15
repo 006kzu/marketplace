@@ -50,9 +50,15 @@ contract('Marketplace', ([deployer, seller, buyer]) => {
             await marketplace.createProduct('', web3.utils.toWei('1', 'Ether'), { from: seller }).should.be.rejected;
             //FAILURE product must have a price
             await marketplace.createProduct('Iphone X', 0, { from: seller }).should.be.rejected;
+        })
 
-
-
+        it('Lists products', async () => {
+            const product = await marketplace.products(productCount);
+            assert.equal(product.id.toNumber(), productCount.toNumber(), 'id is correct');
+            assert.equal(product.name, 'Iphone X', 'name is correct');
+            assert.equal(product.price, '1000000000000000000' , 'price is correct');
+            assert.equal(product.owner, seller, 'is correct');
+            assert.equal(product.purchased, false , 'purchased is correct');
         })
     })
 })
